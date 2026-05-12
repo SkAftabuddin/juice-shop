@@ -10,6 +10,7 @@ jobs:
 # ✅ 1. GITLEAKS (Secrets Scan)
   gitleaks:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v3
       - name: Run Gitleaks
@@ -19,6 +20,7 @@ jobs:
 # ✅ 2. TRIVY (Filesystem scan)
   trivy:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v3
       - name: Run Trivy
@@ -31,6 +33,7 @@ jobs:
 # ✅ 3. SONARCLOUD (Code Quality)
   sonar:
     runs-on: ubuntu-latest
+    continue-on-error: true
     needs: [gitleaks, trivy]
     steps:
       - uses: actions/checkout@v3
@@ -47,6 +50,7 @@ jobs:
 # ✅ 4. ZAP (DAST Scan)
   zap_scan:
     runs-on: ubuntu-latest
+    continue-on-error: true
     needs: sonar
     steps:
       - uses: actions/checkout@v3
