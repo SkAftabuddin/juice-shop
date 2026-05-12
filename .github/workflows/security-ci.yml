@@ -1,0 +1,88 @@
+name: Security CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+
+# 🔐 1. Gitleaks
+  gitleaks:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Gitleaks
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Run Gitleaks
+        run: |
+          gitleaks detect --source . --report-format json --report-path gitleaks.json
+
+
+# 📦 2. OWASP Dependency Check
+  dependency-check:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    needs: gitleaks
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: "juice-shop"
+          path: "."
+          format: "HTML"
+
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-report
+          path: reports/
+
+
+# 🧾 3. SBOM (Syft)
+  sbom:
+    runs-on: ubuntu-latest
+    needs: dependency-check
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
+
+      - name: Generate SBOM
+        run: |
+          syft . -o json > sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
+
+# 🔎 4. Trivy FS scan
+  trivy:
+    runs-on: ubuntu-latest
+    needs: sbom
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          severity: 'CRITICAL,HIGH'
