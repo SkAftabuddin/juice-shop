@@ -1,0 +1,41 @@
+name: Nuclei Scan (Controlled)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  nuclei:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Install Nuclei
+        run: |
+          go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Update templates
+        run: nuclei -update-templates
+
+      - name: Run controlled scan
+        run: |
+          nuclei -u https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/ \
+            -tags exposure,misconfig,file \
+            -rate-limit 5 \
+            -o results.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuclei-results
+          path: results.txt
