@@ -13,3 +13,8 @@ jobs:
 
       - name: Pipeline Started
         run: echo "Juice Shop Pipeline Running"
+      
+      - name: Run Nuclei Scan
+        uses: projectdiscovery/nuclei-action@main
+        with:
+          target: https://devsecops-pipeline-demo.onrender.com
