@@ -54,7 +54,10 @@ jobs:
           project: "juice-shop"
           path: "."
           format: "HTML"
+          args: >
+            --disableArchive
 
+          
       - name: Upload Report
         uses: actions/upload-artifact@v4
         with:
@@ -72,8 +75,11 @@ jobs:
 
       - name: Install Syft
         run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
+           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
+      - name: Verify Syft
+        run: syft version
 
+      
       - name: Generate SBOM
         run: |
           syft . -o json > sbom.json
