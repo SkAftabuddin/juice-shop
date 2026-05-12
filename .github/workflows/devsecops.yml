@@ -20,8 +20,9 @@ jobs:
 
       - name: Install Gitleaks
         run: |
-          go install github.com/gitleaks/gitleaks/v8@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+         go install github.com/zricethezav/gitleaks/v8@latest
+         echo "$HOME/go/bin" >> $GITHUB_PATH
+
 
       - name: Run Gitleaks Scan
         continue-on-error: true
