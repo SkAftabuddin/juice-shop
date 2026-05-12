@@ -18,11 +18,13 @@ jobs:
         run: |
           mkdir -p zap-output
           docker run --rm \
-            -v $(pwd)/zap-output:/zap/wrk/:rw \
+           -u root \
+           -v $(pwd)/zap-output:/zap/wrk/:rw \
             zaproxy/zap-stable \
             zap-baseline.py \
-            -t https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/ \
-            -r report.html
+           -t https://your-url.app.github.dev \
+           -r report.html
+
 
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
