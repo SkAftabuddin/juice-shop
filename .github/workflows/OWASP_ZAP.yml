@@ -23,7 +23,7 @@ jobs:
            -v $(pwd)/zap-output:/zap/wrk/:rw \
             zaproxy/zap-stable \
             zap-baseline.py \
-           -t https://your-url \
+           -t https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/ \
            -I \
            -r report.html
 
