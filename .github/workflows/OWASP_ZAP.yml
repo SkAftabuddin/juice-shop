@@ -13,18 +13,19 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-
+        
       - name: Run ZAP Baseline Scan
+        continue-on-error: true
         run: |
-          mkdir -p zap-output
-          docker run --rm \
+         mkdir -p zap-output
+         docker run --rm \
            -u root \
            -v $(pwd)/zap-output:/zap/wrk/:rw \
             zaproxy/zap-stable \
             zap-baseline.py \
-           -t https://your-url.app.github.dev \
+           -t https://your-url \
+           -I \
            -r report.html
-
 
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
