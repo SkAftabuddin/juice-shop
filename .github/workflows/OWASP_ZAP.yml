@@ -19,4 +19,5 @@ jobs:
         with:
           target: 'https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/'
           allow_issue_writing: false
-          artifact_name: 'zap-report'
+          upload_artifact: false
+
