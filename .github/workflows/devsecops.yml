@@ -13,8 +13,22 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v3
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+      - name: Install Gitleaks
+        run: |
+          wget https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64.tar.gz
+          tar -xvzf gitleaks-linux-amd64.tar.gz
+          sudo mv gitleaks /usr/local/bin/
+      - name: Run Gitleaks Scan
+        run: |
+          gitleaks detect --source . --verbose --report-path gitleaks-report.json
+      - name: Upload Gitleaks Report
+        uses: actions/upload-artifact@v4
+        with:
+         name: gitleaks-report
+         path: gitleaks-report.json
+
+        
+
 
 
 # ✅ 2. TRIVY (Filesystem scan)
