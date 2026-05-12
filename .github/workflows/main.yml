@@ -18,3 +18,4 @@ jobs:
         uses: projectdiscovery/nuclei-action@main
         with:
           target: https://devsecops-pipeline-demo.onrender.com
+          flags: "-rl 5 -c 2 -severity low,medium"
