@@ -1,23 +1,31 @@
 name: OWASP ZAP Scan
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       - name: Run ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.10.0
-        with:
-          target: 'https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/'
-          allow_issue_writing: false
-          upload_artifact: false
+        run: |
+          mkdir -p zap-output
+          docker run --rm \
+            -v $(pwd)/zap-output:/zap/wrk/:rw \
+            owasp/zap2docker-stable \
+            zap-baseline.py \
+            -t https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/ \
+            -r report.html
 
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap-output/report.html
