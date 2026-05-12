@@ -18,3 +18,4 @@ jobs:
         uses: zaproxy/action-baseline@v0.10.0
         with:
           target: 'https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/'
+          allow_issue_writing: false
