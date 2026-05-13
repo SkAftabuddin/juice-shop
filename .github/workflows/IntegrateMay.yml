@@ -25,7 +25,7 @@ jobs:
 
       - name: Run Gitleaks
         run: |
-          gitleaks detect --source . --report-format json --report-path=gitleaks.json || exiy 0
+          gitleaks detect --source . --report-format json --report-path=gitleaks.json || true
 
 
 # 📦 2. Dependency Check
