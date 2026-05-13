@@ -223,7 +223,7 @@ jobs:
 # 🚀 10. Deploy Production
   deploy_prod:
     runs-on: ubuntu-latest
-    needs: zap_scan
+    needs: [zap_scan, nuclei]
     steps:
       - name: Deploy Production
         run: |
