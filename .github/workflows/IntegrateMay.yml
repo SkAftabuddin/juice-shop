@@ -123,7 +123,7 @@ jobs:
           echo "===== STAGING ====="
           echo "Start Codespaces manually"
           echo "npm install && npm start"
-          echo "copy URL"
+          echo "App deployed in Staging-https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/"
 
 
 # 🌐 8. ZAP Scan
