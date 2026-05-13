@@ -27,6 +27,12 @@ jobs:
         run: |
           gitleaks detect --source . --report-format json --report-path=gitleaks.json || true
 
+      - name: Upload Gitleaks Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+
 
 # 📦 2. Dependency Check
   dependency-check:
@@ -44,6 +50,12 @@ jobs:
           format: "HTML"
           args: >
             --disableArchive
+      
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-reportM
+          path: reports/
 
 
 # 🧾 3. SBOM
@@ -63,6 +75,12 @@ jobs:
       - name: Generate SBOM
         run: syft . -o json > sbom.json
 
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
 
 # 🔎 4. Trivy
   trivy:
@@ -76,7 +94,23 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
+          format: 'json'
+          output: 'trivy-report.json'
           severity: CRITICAL,HIGH
+
+ 
+      - name: Verify Trivy Report Exists
+        run: | 
+         echo "Listing generated files:"
+        
+
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        with:
+         name: trivy-report
+         path: trivy-report.json
+
+       
 
 
 # 🔐 5. Sonar
@@ -95,6 +129,14 @@ jobs:
             -Dsonar.organization=skaftabuddin
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Upload Sonar Report
+        uses: actions/upload-artifact@v4
+        with:
+         name: sonar-reportM
+         path: .scannerwork/
+
+    
 
 
 # 🧾 6. Build
@@ -143,6 +185,12 @@ jobs:
             -t https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev \
             -I \
             -r report.html
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reportM
+          path: zap-output/report.html
 
 
 # 🚀 9. Deploy Production
