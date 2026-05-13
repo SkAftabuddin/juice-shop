@@ -78,8 +78,50 @@ jobs:
           name: sbom
           path: sbom.json
 
+       
 
-# 🔎 4. Trivy
+
+# 🔐 4. Sonar
+  sonar:
+    runs-on: ubuntu-latest
+    needs: sbom
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Sonar Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          args: >
+            -Dsonar.projectKey=skaftabuddin_devsecops-pipeline-demo
+            -Dsonar.organization=skaftabuddin
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Upload Sonar Report
+        uses: actions/upload-artifact@v4
+        with:
+         name: sonar-reportM
+         path: .scannerwork/
+
+    
+
+
+# 🧾 5. Build
+  build:
+    runs-on: ubuntu-latest
+    needs: sonar
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          echo "===== BUILD ====="
+          npm install
+          npm run build || echo "no build"
+
+# 🔎 6. Trivy for Container Security
   trivy:
     runs-on: ubuntu-latest
     needs: sbom
@@ -106,48 +148,8 @@ jobs:
          name: trivy-report
          path: trivy-report.json
 
-       
 
-
-# 🔐 5. Sonar
-  sonar:
-    runs-on: ubuntu-latest
-    needs: trivy
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Sonar Scan
-        uses: SonarSource/sonarcloud-github-action@v2
-        with:
-          args: >
-            -Dsonar.projectKey=skaftabuddin_devsecops-pipeline-demo
-            -Dsonar.organization=skaftabuddin
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      - name: Upload Sonar Report
-        uses: actions/upload-artifact@v4
-        with:
-         name: sonar-reportM
-         path: .scannerwork/
-
-    
-
-
-# 🧾 6. Build
-  build:
-    runs-on: ubuntu-latest
-    needs: sonar
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build
-        run: |
-          echo "===== BUILD ====="
-          npm install
-          npm run build || echo "no build"
+          
 # 🚀 7. Deploy Staging (Codespaces simulated)
   deploy_staging:
     runs-on: ubuntu-latest
