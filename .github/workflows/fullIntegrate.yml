@@ -1,4 +1,4 @@
-name: Fully Integrated Pipeline
+name: CI CD Pipeline Integration
 
 on:
   push:
