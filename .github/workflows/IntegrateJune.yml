@@ -178,7 +178,9 @@ jobs:
             zap-baseline.py \
             -t https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev \
             -I \
-            -r report.html \ | tee -a zap.log
+            -r report.html \
+           -z "-config globalexcludeurl.url_list.url.regex='.*/sockjs-node/.*'" \
+            2>&1 | tee -a zap.log
               echo "=== ZAP Scan Finished at $(date) ===" >> zap.log
 
       - name: Upload ZAP Log and Report
