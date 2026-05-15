@@ -178,12 +178,15 @@ jobs:
             zap-baseline.py \
             -t https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev \
             -I \
-            -r report.html
-      - name: Upload ZAP Report
+            -r report.html \ | tee -a zap.log
+              echo "=== ZAP Scan Finished at $(date) ===" >> zap.log
+
+      - name: Upload ZAP Log and Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-reportM
-          path: zap-output/report.html
+          path:  zap.log zap-output/report.html
+
 
 
 # 🌐 9. Nuclei Scan
@@ -204,19 +207,24 @@ jobs:
 
       - name: Update templates
         run: nuclei -update-templates
+      
+      - name: Run Nuclei Scan and Write Logs
+        run: |
+         echo "=== Nuclei Scan Started at $(date) ===" >> nuclei.log
 
       - name: Run controlled scan
         run: |
           nuclei -u https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/ \
             -tags exposure,misconfig,file \
             -rate-limit 3 \
-            -o results.txt
+            -o results.txt | tee -a nuclei.log
+                echo "=== Nuclei Scan Finished at $(date) ===" | tee -a nuclei.log
 
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
-          name: nuclei-results
-          path: results.txt
+          name: nuclei-results-logs
+          path: results.txt nuclei.log
 
 
 
