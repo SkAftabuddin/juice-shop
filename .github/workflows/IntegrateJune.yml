@@ -170,18 +170,19 @@ jobs:
     steps:
       - name: ZAP Scan
         run: |
+          echo "=== ZAP Scan Started at $(date) ===" > zap.log
           mkdir -p zap-output
-             echo "=== ZAP Scan Started at $(date) ===" > zap.log
           docker run --rm \
             -u root \
-            -v $(pwd)/zap-output:/zap/wrk/:rw \
+            -v "$(pwd)/zap-output:/zap/wrk" \
             zaproxy/zap-stable \
             zap-baseline.py \
             -t https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev \
             -I \
             -r report.html \
-             2>&1 | tee -a zap.log
-              echo "=== ZAP Scan Finished at $(date) ===" >> zap.log
+             -w /zap/wrk \    2>&1 | tee -a zap.log
+               echo "=== ZAP Scan Finished at $(date) ===" >> zap.log
+
 
 
       - name: Upload ZAP Logs and Report
