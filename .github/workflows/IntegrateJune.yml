@@ -171,6 +171,7 @@ jobs:
       - name: ZAP Scan
         run: |
           mkdir -p zap-output
+             echo "=== ZAP Scan Started at $(date) ===" > zap.log
           docker run --rm \
             -u root \
             -v $(pwd)/zap-output:/zap/wrk/:rw \
@@ -179,15 +180,16 @@ jobs:
             -t https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev \
             -I \
             -r report.html \
-           -z "-config globalexcludeurl.url_list.url.regex='.*/sockjs-node/.*'" \
-            2>&1 | tee -a zap.log
+             2>&1 | tee -a zap.log
               echo "=== ZAP Scan Finished at $(date) ===" >> zap.log
 
-      - name: Upload ZAP Log and Report
+
+      - name: Upload ZAP Logs and Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-reportM
           path:  zap.log zap-output/report.html
+          if-no-files-found: warn
 
 
 
