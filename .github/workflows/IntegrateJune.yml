@@ -244,3 +244,79 @@ jobs:
           echo "===== PRODUCTION ====="
           echo "Deploying to Render"
           echo "APP Online in https://devsecops-pipeline-demo.onrender.com/#/ "
+
+
+# 🌐 11. Monitoring Stage (Codespace Observability Check)
+monitoring:
+  runs-on: ubuntu-latest
+  needs: deploy_prod
+  continue-on-error: true
+
+  steps:
+    - name: Start Monitoring
+      run: echo "=== Monitoring Stage Started $(date) ==="
+
+    # 🔍 1. Check Staging App Availability (Codespace URL)
+    - name: Check Staging App is UP
+      run: |
+        echo "Checking staging URL..."
+        curl -f https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/ \
+          && echo "Deploy is UP" \
+          || echo "Deploy is DOWN"
+
+    # 📊 2. Check Prometheus Metrics Endpoint (Metrics Exporter Running)
+    - name: Check Prometheus Metrics
+      run: |
+        echo "Checking Prometheus metrics..."
+        curl -f https://bookish-space-capybara-xpw9pppr974f475-9090.app.github.dev/metrics \
+          && echo "Prometheus reachable" \
+          || echo "Prometheus unreachable"
+
+    # 📁 3. Create CI/CD Monitoring Log
+    - name: Generate Pipeline Log for Loki
+      run: |
+        echo "ci-cd monitoring event: pipeline=${GITHUB_RUN_ID} time=$(date)" > pipeline.log
+
+    - name: Upload Pipeline Monitoring Log
+      uses: actions/upload-artifact@v4
+      with:
+        name: cicd-monitor-log
+        path: pipeline.log
+
+    # 📥 4. Trigger log entry into Loki (via HTTP)
+    - name: Send Test Log to Loki
+      run: |
+        echo "Sending synthetic pipeline log..."
+        curl -X POST "https://bookish-space-capybara-xpw9pppr974f475-3100.app.github.dev/loki/api/v1/push" \
+          -H "Content-Type: application/json" \
+          --data '{
+              "streams": [
+                {
+                  "stream": {"job": "ci-pipeline"},
+                  "values": [
+                    ["'$(date +%s%N)'", "pipeline:'${GITHUB_RUN_ID}' CI/CD synthetic log event"]
+                  ]
+                }
+              ]
+            }'
+
+    # 📚 5. Check Loki Query for Logs
+    - name: Verify Loki Receives Logs
+      run: |
+        echo "Querying Loki..."
+        curl -G "https://bookish-space-capybara-xpw9pppr974f475-3100.app.github.dev/loki/api/v1/query" \
+          --data-urlencode 'query={job="syslog"}' \
+          && echo "Loki Query Successful" \
+          || echo "Loki Query FAILED"
+
+    # 🛡️ 6. Check CrowdSec Local API (optional)
+    - name: Check CrowdSec API
+      run: |
+        echo "Checking CrowdSec Local API..."
+        curl -f https://bookish-space-capybara-xpw9pppr974f475-9080.app.github.dev \
+          && echo "CrowdSec API OK" \
+          || echo "CrowdSec API unreachable"
+
+    - name: Monitoring Completed
+      run: echo "=== Monitoring Stage Complete $(date) ==="
+``
