@@ -247,7 +247,7 @@ jobs:
       - name: Start Monitoring
         run: echo "=== Monitoring Stage Started $(date) ==="
 
-      - name: Check Staging App is UP
+      - name: Check Deploy App is UP
         run: |
           echo "Checking Deploy URL..."
           curl -f https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/ \
