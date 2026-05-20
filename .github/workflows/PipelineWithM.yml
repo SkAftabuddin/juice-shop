@@ -249,7 +249,7 @@ jobs:
 
       - name: Check Staging App is UP
         run: |
-          echo "Checking staging URL..."
+          echo "Checking Deploy URL..."
           curl -f https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/ \
             && echo "Deploy is UP" \
             || echo "Deploy is DOWN"
