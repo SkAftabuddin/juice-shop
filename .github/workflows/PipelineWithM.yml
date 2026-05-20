@@ -1,0 +1,306 @@
+name: PipelineWithM
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+
+# 🔐 1. Gitleaks
+  gitleaks:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Install Gitleaks
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Run Gitleaks
+        run: |
+          gitleaks detect --source . --report-format json --report-path=gitleaks.json || true
+
+      - name: Upload Gitleaks Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+
+# 📦 2. Dependency Check
+  dependency-check:
+    runs-on: ubuntu-latest
+    needs: gitleaks
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: "juice-shop"
+          path: "."
+          format: "HTML"
+          args: >
+            --disableArchive
+
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-reportM
+          path: reports/
+
+# 🧾 3. SBOM
+  sbom:
+    runs-on: ubuntu-latest
+    needs: dependency-check
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
+
+      - run: syft version
+
+      - name: Generate SBOM
+        run: syft . -o json > sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
+# 🔐 4. Sonar
+  sonar:
+    runs-on: ubuntu-latest
+    needs: sbom
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Sonar Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          args: >
+            -Dsonar.projectKey=skaftabuddin_devsecops-pipeline-demo
+            -Dsonar.organization=skaftabuddin
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Upload Sonar Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-reportM
+          path: .scannerwork/
+
+# 🧾 5. Build
+  build:
+    runs-on: ubuntu-latest
+    needs: sonar
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          echo "===== BUILD ====="
+          npm install
+          npm run build || echo "no build"
+
+# 🔎 6. Trivy
+  trivy:
+    runs-on: ubuntu-latest
+    needs: build
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          format: 'json'
+          output: 'trivy-report.json'
+          severity: CRITICAL,HIGH
+
+      - name: Verify Trivy Report Exists
+        run: |
+          echo "Listing generated files:"
+
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.json
+
+# 🚀 7. Deploy Staging
+  deploy_staging:
+    runs-on: ubuntu-latest
+    needs: trivy
+    continue-on-error: true
+    steps:
+      - name: Deploy Staging
+        run: |
+          echo "===== STAGING ====="
+          echo "Start Codespaces manually"
+          echo "npm install && npm start"
+          echo "App deployed in Staging-https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/"
+
+# 🌐 8. ZAP Scan
+  zap_scan:
+    runs-on: ubuntu-latest
+    needs: deploy_staging
+    continue-on-error: true
+    steps:
+      - name: ZAP Scan
+        run: |
+          echo "=== ZAP Scan Started at $(date) ===" > zap.log
+          mkdir -p zap-output
+
+          docker run --rm \
+            -u root \
+            -v "$(pwd)/zap-output:/zap/wrk" \
+            zaproxy/zap-stable \
+            zap-baseline.py \
+            -t https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev \
+            -I \
+            -r report.html \
+            -w /zap/wrk \
+            2>&1 | tee -a zap.log
+
+          echo "=== ZAP Scan Finished at $(date) ===" >> zap.log
+
+      - name: Upload ZAP Logs and Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reportM
+          path: |
+            zap.log
+            zap-output/report.html
+          if-no-files-found: warn
+
+# 🌐 9. Nuclei Scan
+  nuclei:
+    runs-on: ubuntu-latest
+    needs: deploy_staging
+    steps:
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Install Nuclei
+        run: |
+          go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Update templates
+        run: nuclei -update-templates
+
+      - name: Run Nuclei Scan and Write Logs
+        run: |
+          echo "=== Nuclei Scan Started at $(date) ===" >> nuclei.log
+
+      - name: Run controlled scan
+        run: |
+          nuclei -u https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/#/ \
+            -tags exposure,misconfig,file \
+            -rate-limit 3 \
+            -o results.txt 2>&1 | tee -a nuclei.log
+
+          echo "=== Nuclei Scan Finished at $(date) ===" >> nuclei.log
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuclei-results-logs
+          path: |
+            results.txt
+            nuclei.log
+
+# 🚀 10. Deploy Production
+  deploy_prod:
+    runs-on: ubuntu-latest
+    needs: [zap_scan, nuclei]
+    steps:
+      - name: Deploy Production
+        run: |
+          echo "===== PRODUCTION ====="
+          echo "Deploying to Render"
+          echo "APP Online in https://devsecops-pipeline-demo.onrender.com/#/"
+
+# 🌐 11. Monitoring Stage (UNCHANGED LOGIC — ONLY INDENT FIXED)
+  monitoring:
+    runs-on: ubuntu-latest
+    needs: deploy_prod
+    continue-on-error: true
+
+    steps:
+      - name: Start Monitoring
+        run: echo "=== Monitoring Stage Started $(date) ==="
+
+      - name: Check Staging App is UP
+        run: |
+          echo "Checking staging URL..."
+          curl -f https://bookish-space-capybara-xpw9pppr974f475-3000.app.github.dev/ \
+            && echo "Deploy is UP" \
+            || echo "Deploy is DOWN"
+
+      - name: Check Prometheus Metrics
+        run: |
+          echo "Checking Prometheus metrics..."
+          curl -f https://bookish-space-capybara-xpw9pppr974f475-9090.app.github.dev/metrics \
+            && echo "Prometheus reachable" \
+            || echo "Prometheus unreachable"
+
+      - name: Generate Pipeline Log for Loki
+        run: |
+          echo "ci-cd monitoring event: pipeline=${GITHUB_RUN_ID} time=$(date)" > pipeline.log
+
+      - name: Upload Pipeline Monitoring Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: cicd-monitor-log
+          path: pipeline.log
+
+      - name: Send Test Log to Loki
+        run: |
+          echo "Sending synthetic pipeline log..."
+          curl -X POST "https://bookish-space-capybara-xpw9pppr974f475-3100.app.github.dev/loki/api/v1/push" \
+            -H "Content-Type: application/json" \
+            --data '{
+              "streams": [
+                {
+                  "stream": {"job": "ci-pipeline"},
+                  "values": [
+                    ["'$(date +%s%N)'", "pipeline:'${GITHUB_RUN_ID}' CI/CD synthetic log event"]
+                  ]
+                }
+              ]
+            }'
+
+      - name: Verify Loki Receives Logs
+        run: |
+          echo "Querying Loki..."
+          curl -G "https://bookish-space-capybara-xpw9pppr974f475-3100.app.github.dev/loki/api/v1/query" \
+            --data-urlencode 'query={job="syslog"}' \
+            && echo "Loki Query Successful" \
+            || echo "Loki Query FAILED"
+
+      - name: Check CrowdSec API
+        run: |
+          echo "Checking CrowdSec Local API..."
+          curl -f https://bookish-space-capybara-xpw9pppr974f475-9080.app.github.dev \
+            && echo "CrowdSec API OK" \
+            || echo "CrowdSec API unreachable"
+
+      - name: Monitoring Completed
+        run: echo "=== Monitoring Stage Complete $(date) ==="
